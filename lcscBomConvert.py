@@ -8,7 +8,7 @@ from lcscToMPN import get_manufacturer_info  # Make sure this file is in the sam
 class BOMConverterGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("BOM Converter with LCSC to MPN")
+        self.root.title("BOM Converter with LCSC to MPN and Manufacturer")
         self.file_path = None
         self.df = None
         self.header_row = 0

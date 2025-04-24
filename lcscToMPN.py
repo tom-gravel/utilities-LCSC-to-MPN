@@ -6,7 +6,7 @@ import requests
 from bs4 import BeautifulSoup
 from tkinter import Tk, filedialog
 
-def get_manufacturer_info(lcsc_part):
+def get_manufacturer_info(lcsc_part,_debug=False):
     url = f"https://www.lcsc.com/product-detail/{lcsc_part}.html"
     headers = {
         'User-Agent': 'Mozilla/5.0'
@@ -20,22 +20,23 @@ def get_manufacturer_info(lcsc_part):
 
         soup = BeautifulSoup(response.text, 'html.parser')
 
-        # Prompt user to save debug output with default name = LCSC part number
-        root = Tk()
-        root.withdraw()  # Hide the tkinter root window
-        save_path = filedialog.asksaveasfilename(
-            defaultextension=".txt",
-            filetypes=[("Text files", "*.txt")],
-            title="Save debug soup content as",
-            initialfile=f"{lcsc_part}.txt"
-        )
+        if _debug:
+            # Prompt user to save debug output with default name = LCSC part number
+            root = Tk()
+            root.withdraw()  # Hide the tkinter root window
+            save_path = filedialog.asksaveasfilename(
+                defaultextension=".txt",
+                filetypes=[("Text files", "*.txt")],
+                title="Save debug soup content as",
+                initialfile=f"{lcsc_part}.txt"
+            )
 
-        if save_path:
-            with open(save_path, "w", encoding="utf-8") as f:
-                f.write(soup.prettify())
-            print(f"Saved debug output to {save_path}")
-        else:
-            print("Save canceled.")
+            if save_path:
+                with open(save_path, "w", encoding="utf-8") as f:
+                    f.write(soup.prettify())
+                print(f"Saved debug output to {save_path}")
+            else:
+                print("Save canceled.")
 
         # Extract Manufacturer Part Number from <meta name="description">
         meta_desc = soup.find("meta", attrs={"name": "description"})
@@ -61,16 +62,16 @@ def get_manufacturer_info(lcsc_part):
 
 
 # === Example usage ===
-lcsc_parts = [
-    "C23138",
-    "C23630",
-    "C125116",
-    "C21190",
-    "C840096"
-]
+# lcsc_parts = [
+#     "C23138",
+#     "C23630",
+#     "C125116",
+#     "C21190",
+#     "C840096"
+# ]
 
-for part in lcsc_parts:
-    info = get_manufacturer_info(part)
-    if info:
-        print(info)
-    time.sleep(1)  # Be polite and don’t hammer their servers
+# for part in lcsc_parts:
+#     info = get_manufacturer_info(part)
+#     if info:
+#         print(info)
+#     time.sleep(1)  # Be polite and don’t hammer their servers

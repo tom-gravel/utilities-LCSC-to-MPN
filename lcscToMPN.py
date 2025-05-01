@@ -6,6 +6,101 @@ import requests
 from bs4 import BeautifulSoup
 from tkinter import Tk, filedialog
 
+
+import re
+
+def try_parse_int(text):
+    try:
+        return int(text.replace(",", "").strip())
+    except:
+        return 0
+
+def extract_table_details_from_soup_v2(soup):
+    pricing_breaks, unit_prices = [], []
+    for table in soup.find_all("table"):
+        headers = [th.get_text(strip=True) for th in table.find_all("th")]
+        if headers == ['Qty.', 'Unit Price', 'Ext. Price']:
+            for row in table.find_all("tr")[1:]:
+                cells = row.find_all("td")
+                if len(cells) >= 2:
+                    qty_span = cells[0].find("span")
+                    price_span = cells[1].find("span")
+                    if qty_span and price_span:
+                        try:
+                            qty = int(qty_span.get_text(strip=True).replace(",", "").replace("+", ""))
+                            price = float(price_span.get_text(strip=True).replace("$", ""))
+                            pricing_breaks.append(qty)
+                            unit_prices.append(price)
+                        except ValueError:
+                            continue
+    quantity_available = None
+    qty_div = soup.find("div", string=re.compile("Can Ship Immediately", re.I))
+    if qty_div:
+        parent = qty_div.find_parent("div")
+        if parent:
+            match = re.search(r'([\d,]+)', parent.text)
+            if match:
+                quantity_available = int(match.group(1).replace(",", ""))
+    return {
+        "Quantity Available": quantity_available,
+        "Pricing Breaks": pricing_breaks,
+        "Unit Prices": unit_prices,
+        "qty":qty,
+        "price":price,
+        "pricing_breaks":pricing_breaks,
+        "unit_prices":unit_prices
+    }
+
+def extract_parameters_from_any_table(soup):
+    params = {
+        "Minimum Purchase Quantity": 0,
+        "Ordering Multiple": 0,
+        "Standard Packaging": 0,
+        "Sales Unit": "Pieces"
+    }
+    for table in soup.find_all("table"):
+        for row in table.find_all("tr"):
+            tds = row.find_all("td")
+            if len(tds) != 2:
+                continue
+            label = tds[0].get_text(strip=True)
+            value = tds[1].get_text(strip=True).replace(",", "")
+            if label in params:
+                if label == "Sales Unit":
+                    params[label] = value
+                else:
+                    try:
+                        params[label] = int(value)
+                    except ValueError:
+                        pass
+    return params
+
+def extract_all_lcsc_details(soup):
+    price_data = extract_table_details_from_soup_v2(soup)
+    param_data = extract_parameters_from_any_table(soup)
+    price_data.update(param_data)
+    return price_data
+
+def get_LCSC_info(lcsc_part,_debug=False):
+    url = f"https://www.lcsc.com/product-detail/{lcsc_part}.html"
+    headers = {
+        'User-Agent': 'Mozilla/5.0'
+    }
+
+    try:
+        response = requests.get(url, headers=headers)
+        if response.status_code != 200:
+            print(f"Failed to fetch {lcsc_part}: HTTP {response.status_code}")
+            return None
+
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        return extract_all_lcsc_details(soup)
+    
+    except Exception as e:
+        print(f"Error fetching {lcsc_part}: {e}")
+        return None
+
 def get_manufacturer_info(lcsc_part,_debug=False):
     url = f"https://www.lcsc.com/product-detail/{lcsc_part}.html"
     headers = {
@@ -62,16 +157,16 @@ def get_manufacturer_info(lcsc_part,_debug=False):
 
 
 # === Example usage ===
-# lcsc_parts = [
-#     "C23138",
-#     "C23630",
-#     "C125116",
-#     "C21190",
-#     "C840096"
-# ]
+lcsc_parts = [
+    "C23138",
+    "C23630",
+    "C125116",
+    "C21190",
+    "C840096"
+]
 
-# for part in lcsc_parts:
-#     info = get_manufacturer_info(part)
-#     if info:
-#         print(info)
-#     time.sleep(1)  # Be polite and don’t hammer their servers
+for part in lcsc_parts:
+    info = get_LCSC_info(part)
+    if info:
+        print(info)
+    time.sleep(1)  # Be polite and don’t hammer their servers
